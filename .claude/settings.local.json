@@ -1,7 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)"
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(cmd /c 'taskkill /F /IM node.exe')",
+      "Bash(netstat -ano)",
+      "Bash(wmic process:*)",
+      "Bash(cmd /c \"wmic process where processid=16792 get name,commandline 2>&1\")",
+      "Bash(powershell -Command \"Get-Process -Id 16792 | Select-Object Name,Path\")",
+      "Bash(powershell -Command 'Stop-Process -Id 16792 -Force')",
+      "Bash(ipconfig)",
+      "Bash(git add:*)"
     ]
   }
 }
