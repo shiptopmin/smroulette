@@ -116,7 +116,7 @@ export function SetupScreen({ onStart }: Props) {
           style={{ background: "linear-gradient(135deg, rgba(108,63,196,0.4), rgba(58,123,213,0.4))", border: "1px solid rgba(255,255,255,0.1)" }}>
           🎱
         </div>
-        <h1 className="text-2xl font-black mb-1" style={{ color: "#fff" }}>구슬 추첨기</h1>
+        <h1 className="text-2xl font-black mb-1" style={{ color: "#fff" }}>BSM 구슬 추첨기</h1>
         <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
           참가자를 입력하고 추첨을 시작하세요
         </p>
