@@ -71,8 +71,8 @@ export function useMarblePhysics(onWinner: (n: string) => void, onStage?: (i: nu
     );
     const count = simNames.length;
 
-    // 중력 낮춤 — 레이스가 15~25초 지속
-    const engine = M.Engine.create({ gravity: { x: 0, y: 0.7 } });
+    // 중력 — 레이스가 12~20초 지속
+    const engine = M.Engine.create({ gravity: { x: 0, y: 0.85 } });
     s.engine = engine;
 
     const render = M.Render.create({
@@ -140,10 +140,18 @@ export function useMarblePhysics(onWinner: (n: string) => void, onStage?: (i: nu
       { x: VW * 0.62, y: 1840, angle: -0.38, col: "#aa77ff" },
     ];
     zigzagRows.forEach(p => bodies.push(plank(p.x, p.y, plankW, p.angle, p.col)));
+    // Zone1 양옆 가이드 핀 — 벽 타고 직선 낙하 방지
+    for (let row = 0; row < 5; row++) {
+      const py = 1010 + row * 200;
+      bodies.push(
+        pin(10, py, 8, "#9966ff88"),
+        pin(VW - 10, py, 8, "#9966ff88"),
+      );
+    }
 
     // ══════════════════════════════════════════════
     // [Zone 2] 스피너 지옥 (y 2020–3140)
-    // 5행 × 3열 = 15개 크로스 스피너
+    // 팔 길이 65px — 스피너 사이 충분한 틈 확보 (막힘 방지)
     // ══════════════════════════════════════════════
     const spinnerPositions = [
       [VW * 0.18, 2080], [VW * 0.50, 2080], [VW * 0.82, 2080],
@@ -155,17 +163,25 @@ export function useMarblePhysics(onWinner: (n: string) => void, onStage?: (i: nu
     ];
     spinnerPositions.forEach(([x, y], idx) => {
       const speed = idx % 2 === 0 ? 0.05 : -0.05;
-      const arm1 = M.Bodies.rectangle(x, y, 100, 10, {
+      const arm1 = M.Bodies.rectangle(x, y, 65, 9, {
         isStatic: true, friction: 0.01, restitution: 0.6,
         render: { fillStyle: "#08D9D6", strokeStyle: "#08D9D6", lineWidth: 2 }
       });
-      const arm2 = M.Bodies.rectangle(x, y, 10, 100, {
+      const arm2 = M.Bodies.rectangle(x, y, 9, 65, {
         isStatic: true, friction: 0.01, restitution: 0.6,
         render: { fillStyle: "#08D9D6", strokeStyle: "#08D9D6", lineWidth: 2 }
       });
       s.spinners.push({ b1: arm1, b2: arm2, speed });
       bodies.push(arm1, arm2);
     });
+    // Zone2 양옆 가이드 핀 — 스트레이트 낙하 방지
+    for (let row = 0; row < 4; row++) {
+      const py = 2180 + row * 220;
+      bodies.push(
+        pin(12, py, 8, "#08D9D688"),
+        pin(VW - 12, py, 8, "#08D9D688"),
+      );
+    }
 
     // ══════════════════════════════════════════════
     // [Zone 3] 탄성 범퍼 격자 (y 3220–4160)
@@ -194,24 +210,26 @@ export function useMarblePhysics(onWinner: (n: string) => void, onStage?: (i: nu
 
     // ══════════════════════════════════════════════
     // [Zone 4] 깔때기 + 결승선 (y 4220–5000)
+    // 좁은 통로 제거 — 깔때기만으로 자연스럽게 순서 결정
     // ══════════════════════════════════════════════
-    // 1차 깔때기
     const funnelColor = "#FFDE7D55";
+    // 1차 넓은 깔때기
     bodies.push(
-      plank(VW * 0.22, 4310, 300, 0.50, funnelColor, 0.2),
-      plank(VW * 0.78, 4310, 300, -0.50, funnelColor, 0.2),
+      plank(VW * 0.20, 4320, 260, 0.48, funnelColor, 0.2),
+      plank(VW * 0.80, 4320, 260, -0.48, funnelColor, 0.2),
     );
-    // 2차 좁은 깔때기
+    // 2차 완만한 깔때기
     bodies.push(
-      plank(VW * 0.30, 4480, 200, 0.45, funnelColor, 0.15),
-      plank(VW * 0.70, 4480, 200, -0.45, funnelColor, 0.15),
+      plank(VW * 0.32, 4520, 160, 0.35, funnelColor, 0.2),
+      plank(VW * 0.68, 4520, 160, -0.35, funnelColor, 0.2),
     );
-    // 좁은 통로
-    const chuteW = R * 3.5;
-    bodies.push(
-      M.Bodies.rectangle(VW / 2 - chuteW / 2 - 8, 4750, 16, 500, { isStatic: true, render: { fillStyle: "#FFDE7D44", strokeStyle: "#FFDE7D", lineWidth: 1 } }),
-      M.Bodies.rectangle(VW / 2 + chuteW / 2 + 8, 4750, 16, 500, { isStatic: true, render: { fillStyle: "#FFDE7D44", strokeStyle: "#FFDE7D", lineWidth: 1 } }),
-    );
+    // 바닥 범퍼 (결승선 직전 흥미 유발)
+    for (let i = 0; i < 3; i++) {
+      bodies.push(M.Bodies.circle(VW * 0.25 + i * VW * 0.25, 4700, 14, {
+        isStatic: true, restitution: 0.9,
+        render: { fillStyle: "#FFDE7D", strokeStyle: "#ffff00", lineWidth: 2 }
+      }));
+    }
     // 결승선 센서
     const sensor = M.Bodies.rectangle(VW / 2, WH - 60, VW, 20, {
       isStatic: true, isSensor: true, label: "finish",
