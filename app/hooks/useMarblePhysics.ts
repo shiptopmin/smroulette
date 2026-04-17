@@ -14,8 +14,9 @@ const MAX = 10;
 const R = 11;
 const VW = 343;
 const VH = 600;
-const WH = 4000;
-const ZONE = [0, 800, 1350, 2250, 3150, WH];
+const WH = 4500;
+// Zone 0: 갈튼 | Zone 1: 지그재그 | Zone 2: 스피너 | Zone 3: 이동 플랫폼 | Zone 4: 범퍼 | Zone 5: 최후의 질주
+const ZONE = [0, 800, 1350, 2050, 2900, 3700, WH];
 
 function shuffle<T>(a: T[]): T[] {
   const b = [...a];
@@ -34,7 +35,9 @@ export function useMarblePhysics(
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const S = useRef({
     engine: null as any, render: null as any, runner: null as any,
-    marbles: [] as MarbleBody[], spinners: [] as any[],
+    marbles: [] as MarbleBody[],
+    spinners: [] as any[],
+    movingPlatforms: [] as any[], // 이동 플랫폼
     timer: null as any, stuckTimer: null as any,
     lastPos: new Map<number, { x: number; y: number }>(),
     finishOrder: [] as string[],
@@ -54,12 +57,11 @@ export function useMarblePhysics(
       if (s.runner) (M.Runner as any).stop(s.runner);
       if (s.engine) (M.Engine as any).clear(s.engine);
       s.engine = s.render = s.runner = null;
-      s.marbles = []; s.spinners = []; s.done = false; s.stage = -1;
-      s.camY = 0; s.tick = 0; s.finishOrder = [];
+      s.marbles = []; s.spinners = []; s.movingPlatforms = [];
+      s.done = false; s.stage = -1; s.camY = 0; s.tick = 0; s.finishOrder = [];
     });
   }, []);
 
-  // 버튼으로 강제 결과 공개 — 현재 y위치로 나머지 순위 결정
   const revealResults = useCallback(() => {
     const s = S.current;
     if (s.done) return;
@@ -88,7 +90,8 @@ export function useMarblePhysics(
     const simNames = shuffle(names.length > MAX ? names.slice(0, MAX) : names);
     const count = simNames.length;
 
-    const engine = M.Engine.create({ gravity: { x: 0, y: 1.2 } });
+    // 중력 강화
+    const engine = M.Engine.create({ gravity: { x: 0, y: 1.5 } });
     s.engine = engine;
 
     const render = M.Render.create({
@@ -120,7 +123,7 @@ export function useMarblePhysics(
       });
 
     // ══════════════════════════════════════════════
-    // [Zone 0] 갈튼 보드 (y 70–750) — 10행
+    // [Zone 0] 갈튼 보드 (y 70–720) — 10행
     // ══════════════════════════════════════════════
     for (let row = 0; row < 10; row++) {
       const cols = row % 2 === 0 ? 8 : 7;
@@ -133,7 +136,6 @@ export function useMarblePhysics(
     // ══════════════════════════════════════════════
     // [Zone 1] 지그재그 경사판 (y 830–1300) — 5개
     // ══════════════════════════════════════════════
-    const plankW = 240;
     const zigzagRows = [
       { x: VW * 0.62, y: 870,  angle: -0.38, col: "#9966ff" },
       { x: VW * 0.38, y: 970,  angle:  0.38, col: "#9966ff" },
@@ -141,15 +143,13 @@ export function useMarblePhysics(
       { x: VW * 0.38, y: 1170, angle:  0.38, col: "#aa77ff" },
       { x: VW * 0.62, y: 1270, angle: -0.38, col: "#aa77ff" },
     ];
-    zigzagRows.forEach(p => bodies.push(plank(p.x, p.y, plankW, p.angle, p.col)));
-    // 양옆 빈틈 가이드 핀
+    zigzagRows.forEach(p => bodies.push(plank(p.x, p.y, 240, p.angle, p.col)));
     for (let row = 0; row < 3; row++) {
       bodies.push(pin(10, 900 + row * 170, 8, "#9966ff88"), pin(VW - 10, 900 + row * 170, 8, "#9966ff88"));
     }
 
     // ══════════════════════════════════════════════
-    // [Zone 2] 스피너 + 핀 혼합 (y 1380–2200)
-    // 스피너 2행 + 핀 격자 2행
+    // [Zone 2] 스피너 + 핀 혼합 (y 1380–2000)
     // ══════════════════════════════════════════════
     const spinnerRows = [
       [VW * 0.18, 1440], [VW * 0.50, 1440], [VW * 0.82, 1440],
@@ -163,7 +163,6 @@ export function useMarblePhysics(
       s.spinners.push({ b1: arm1, b2: arm2, speed });
       bodies.push(arm1, arm2);
     });
-    // 큰 핀 격자
     for (let row = 0; row < 2; row++) {
       const cols = row % 2 === 0 ? 6 : 5;
       const sx = row % 2 === 0 ? 25 : 50;
@@ -171,48 +170,65 @@ export function useMarblePhysics(
         bodies.push(pin(sx + col * 55, 2100 + row * 100, 10, "#08D9D688"));
       }
     }
-    // 양옆 가이드 핀
     for (let row = 0; row < 3; row++) {
       bodies.push(pin(10, 1540 + row * 220, 8, "#08D9D688"), pin(VW - 10, 1540 + row * 220, 8, "#08D9D688"));
     }
 
     // ══════════════════════════════════════════════
-    // [Zone 3] 탄성 범퍼 격자 (y 2300–3100)
+    // [Zone 3] 이동 플랫폼 구간 (y 2100–2860)
+    // 좌우로 왕복하는 플랫폼 — 매 레이스마다 경로 달라짐
+    // ══════════════════════════════════════════════
+    const platformDefs = [
+      { baseX: VW * 0.30, y: 2200, amplitude: 90, speed: 0.022, phase: 0 },
+      { baseX: VW * 0.70, y: 2320, amplitude: 80, speed: 0.028, phase: Math.PI },
+      { baseX: VW * 0.25, y: 2450, amplitude: 95, speed: 0.018, phase: Math.PI * 0.5 },
+      { baseX: VW * 0.70, y: 2570, amplitude: 85, speed: 0.025, phase: Math.PI * 1.5 },
+      { baseX: VW * 0.40, y: 2700, amplitude: 90, speed: 0.020, phase: Math.PI * 0.7 },
+      { baseX: VW * 0.65, y: 2820, amplitude: 80, speed: 0.030, phase: Math.PI * 1.2 },
+    ];
+    platformDefs.forEach(def => {
+      const b = M.Bodies.rectangle(def.baseX, def.y, 150, 14, {
+        isStatic: true, friction: 0.02, restitution: 0.4,
+        render: { fillStyle: "#FF9A00", strokeStyle: "#ffcc44", lineWidth: 2 }
+      });
+      s.movingPlatforms.push({ body: b, ...def });
+      bodies.push(b);
+    });
+
+    // ══════════════════════════════════════════════
+    // [Zone 4] 탄성 범퍼 격자 (y 2950–3660)
     // ══════════════════════════════════════════════
     const bumperR = 18;
     for (let row = 0; row < 4; row++) {
       for (let col = 0; col < 5; col++) {
-        bodies.push(M.Bodies.circle(38 + col * 68 + (row % 2) * 34, 2360 + row * 170, bumperR, {
+        bodies.push(M.Bodies.circle(38 + col * 68 + (row % 2) * 34, 3010 + row * 155, bumperR, {
           isStatic: true, restitution: 1.2,
           render: { fillStyle: "#FF2E63", strokeStyle: "#ff6688", lineWidth: 3 }
         }));
       }
     }
     for (let col = 0; col < 4; col++) {
-      bodies.push(M.Bodies.circle(55 + col * 80, 3040, bumperR, {
+      bodies.push(M.Bodies.circle(55 + col * 80, 3630, bumperR, {
         isStatic: true, restitution: 1.2,
         render: { fillStyle: "#FF2E63", strokeStyle: "#ff6688", lineWidth: 3 }
       }));
     }
 
     // ══════════════════════════════════════════════
-    // [Zone 4] 최후의 질주 (y 3200–4000)
+    // [Zone 5] 최후의 질주 (y 3750–4500)
     // ══════════════════════════════════════════════
     const funnelColor = "#FFDE7D55";
-    // 깔때기 (교차 없음)
     bodies.push(
-      plank(VW * 0.14, 3280, 170, 0.40, funnelColor, 0.25),
-      plank(VW * 0.86, 3280, 170, -0.40, funnelColor, 0.25),
+      plank(VW * 0.14, 3830, 170, 0.40, funnelColor, 0.25),
+      plank(VW * 0.86, 3830, 170, -0.40, funnelColor, 0.25),
     );
-    // 지그재그 경사판 3개
     bodies.push(
-      plank(VW * 0.65, 3440, 180, -0.30, funnelColor, 0.2),
-      plank(VW * 0.35, 3560, 180,  0.30, funnelColor, 0.2),
-      plank(VW * 0.65, 3680, 180, -0.30, funnelColor, 0.2),
+      plank(VW * 0.65, 3990, 180, -0.30, funnelColor, 0.2),
+      plank(VW * 0.35, 4110, 180,  0.30, funnelColor, 0.2),
+      plank(VW * 0.65, 4230, 180, -0.30, funnelColor, 0.2),
     );
-    // 결승선 직전 범퍼
     for (let i = 0; i < 4; i++) {
-      bodies.push(M.Bodies.circle(42 + i * 88, 3820, 14, {
+      bodies.push(M.Bodies.circle(42 + i * 88, 4370, 14, {
         isStatic: true, restitution: 0.9,
         render: { fillStyle: "#FFDE7D", strokeStyle: "#ffff00", lineWidth: 2 }
       }));
@@ -225,7 +241,7 @@ export function useMarblePhysics(
     bodies.push(sensor);
 
     // ══════════════════════════════════════════════
-    // 구슬 생성 — 모두 동일 물리 속성 (공정한 레이스)
+    // 구슬 생성 — 동일 물리 속성
     // ══════════════════════════════════════════════
     const spread = VW * 0.75;
     const marbles = simNames.map((name, i) => {
@@ -233,8 +249,8 @@ export function useMarblePhysics(
       const x = baseX + (Math.random() - 0.5) * 15;
       const y = -R * 2 - i * 20;
       const b = M.Bodies.circle(x, y, R, {
-        restitution: 0.35, friction: 0.02, frictionAir: 0.007,
-        density: 0.002, // 모든 구슬 동일
+        restitution: 0.35, friction: 0.02, frictionAir: 0.004,
+        density: 0.002,
         render: { fillStyle: COLORS[i % COLORS.length], strokeStyle: "#ffffff88", lineWidth: 2 },
         label: "marble"
       });
@@ -246,9 +262,15 @@ export function useMarblePhysics(
     // ── 이벤트 ───────────────────────────────────
     M.Events.on(engine, "beforeUpdate", () => {
       s.tick++;
+      // 스피너 회전
       s.spinners.forEach(sp => {
         M.Body.setAngle(sp.b1, sp.b1.angle + sp.speed);
         M.Body.setAngle(sp.b2, sp.b2.angle + sp.speed);
+      });
+      // 이동 플랫폼 — 좌우 왕복
+      s.movingPlatforms.forEach(p => {
+        const newX = p.baseX + Math.sin(s.tick * p.speed + p.phase) * p.amplitude;
+        M.Body.setPosition(p.body, { x: newX, y: p.body.position.y });
       });
     });
 
@@ -258,7 +280,7 @@ export function useMarblePhysics(
       ctx.save();
       ctx.font = "bold 10px sans-serif";
       ctx.textAlign = "center";
-      s.marbles.forEach((m, idx) => {
+      s.marbles.forEach(m => {
         const { x, y } = (m.body as any).position;
         const txt = m.name.length > 5 ? m.name.slice(0, 4) + ".." : m.name;
         const tw = ctx.measureText(txt).width;
@@ -282,13 +304,9 @@ export function useMarblePhysics(
         if (!found) return;
         s.finishOrder.push(found.name);
         if (s.finishOrder.length === 1) {
-          // 첫 번째 도착 → 버튼 표시
           onFirstFinish(found.name);
           if (s.timer) clearTimeout(s.timer);
-          // 5초 내에 나머지도 처리
-          s.timer = setTimeout(() => {
-            if (!s.done) revealResults();
-          }, 8000);
+          s.timer = setTimeout(() => { if (!s.done) revealResults(); }, 8000);
         }
         if (s.finishOrder.length === s.marbles.length) {
           s.done = true;
@@ -298,10 +316,8 @@ export function useMarblePhysics(
       });
     });
 
-    // 전체 폴백 타이머
-    s.timer = setTimeout(() => {
-      if (!s.done) revealResults();
-    }, 40000);
+    // 폴백 타이머
+    s.timer = setTimeout(() => { if (!s.done) revealResults(); }, 40000);
 
     // 막힘 방지
     s.stuckTimer = setInterval(() => {
@@ -310,7 +326,7 @@ export function useMarblePhysics(
         const b = m.body as any;
         const last = s.lastPos.get(b.id);
         if (last && Math.abs(b.position.x - last.x) + Math.abs(b.position.y - last.y) < 3) {
-          M.Body.setVelocity(b, { x: (Math.random() - 0.5) * 2, y: Math.abs(b.velocity.y) + 1 });
+          M.Body.setVelocity(b, { x: (Math.random() - 0.5) * 2, y: Math.abs(b.velocity.y) + 1.5 });
         }
         s.lastPos.set(b.id, { x: b.position.x, y: b.position.y });
       });

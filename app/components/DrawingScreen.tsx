@@ -6,11 +6,12 @@ import { Confetti } from "./Confetti";
 
 const RANK_MEDALS: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 const STAGE_INFO = [
-  { name: "갈튼 보드",    icon: "⬇️",  desc: "핀 사이로 구슬이 흩어집니다" },
-  { name: "지그재그",     icon: "↔️",  desc: "경사판을 타고 좌우로 튕깁니다" },
-  { name: "스피너 지옥",  icon: "🌀",  desc: "회전하는 장애물을 돌파하세요" },
-  { name: "고탄성 범퍼",  icon: "💥",  desc: "닿는 순간 팅겨나가는 짜릿함!" },
-  { name: "최후의 질주",  icon: "🏁",  desc: "승자가 결정되는 순간!" },
+  { name: "갈튼 보드",      icon: "⬇️",  desc: "핀 사이로 구슬이 흩어집니다" },
+  { name: "지그재그",       icon: "↔️",  desc: "경사판을 타고 좌우로 튕깁니다" },
+  { name: "스피너 지옥",    icon: "🌀",  desc: "회전하는 장애물을 돌파하세요" },
+  { name: "이동 플랫폼",    icon: "🚧",  desc: "움직이는 발판이 경로를 바꿉니다!" },
+  { name: "고탄성 범퍼",    icon: "💥",  desc: "닿는 순간 팅겨나가는 짜릿함!" },
+  { name: "최후의 질주",    icon: "🏁",  desc: "승자가 결정되는 순간!" },
 ];
 
 export function DrawingScreen({ names, onComplete, onSkipToEnd }: {
