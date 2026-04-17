@@ -209,23 +209,27 @@ export function useMarblePhysics(onWinner: (n: string) => void, onStage?: (i: nu
     }
 
     // ══════════════════════════════════════════════
-    // [Zone 4] 깔때기 + 결승선 (y 4220–5000)
-    // 좁은 통로 제거 — 깔때기만으로 자연스럽게 순서 결정
+    // [Zone 4] 최후의 질주 (y 4220–5000)
+    // 깔때기 끝이 교차하지 않도록 길이/위치 계산:
+    //   VW*0.14 + 85*cos(0.40) ≈ 48+78 = 126px (왼판 끝)
+    //   VW*0.86 - 78           ≈ 295-78 = 217px (오른판 끝)
+    //   → 가운데 91px 여유 (구슬 22px × 4 여유)
     // ══════════════════════════════════════════════
     const funnelColor = "#FFDE7D55";
-    // 1차 넓은 깔때기
+    // 1차 깔때기 (짧고 교차 없음)
     bodies.push(
-      plank(VW * 0.20, 4320, 260, 0.48, funnelColor, 0.2),
-      plank(VW * 0.80, 4320, 260, -0.48, funnelColor, 0.2),
+      plank(VW * 0.14, 4320, 170, 0.40, funnelColor, 0.25),
+      plank(VW * 0.86, 4320, 170, -0.40, funnelColor, 0.25),
     );
-    // 2차 완만한 깔때기
+    // 지그재그 경사판 3쌍 — 자연스럽게 순서 결정
     bodies.push(
-      plank(VW * 0.32, 4520, 160, 0.35, funnelColor, 0.2),
-      plank(VW * 0.68, 4520, 160, -0.35, funnelColor, 0.2),
+      plank(VW * 0.65, 4480, 180, -0.30, funnelColor, 0.2),
+      plank(VW * 0.35, 4600, 180,  0.30, funnelColor, 0.2),
+      plank(VW * 0.65, 4720, 180, -0.30, funnelColor, 0.2),
     );
-    // 바닥 범퍼 (결승선 직전 흥미 유발)
-    for (let i = 0; i < 3; i++) {
-      bodies.push(M.Bodies.circle(VW * 0.25 + i * VW * 0.25, 4700, 14, {
+    // 결승선 직전 범퍼
+    for (let i = 0; i < 4; i++) {
+      bodies.push(M.Bodies.circle(42 + i * 88, 4860, 14, {
         isStatic: true, restitution: 0.9,
         render: { fillStyle: "#FFDE7D", strokeStyle: "#ffff00", lineWidth: 2 }
       }));

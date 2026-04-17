@@ -162,6 +162,39 @@ export function SetupScreen({ onStart }: Props) {
         </div>
       </div>
 
+      {/* Start button — 목록 위에 고정 */}
+      {!bulkMode && (
+        <div className="relative z-10 px-4 pb-3">
+          {validNames.length < 2 && (
+            <p className="text-center text-xs mb-2" style={{ color: "rgba(255,255,255,0.3)" }}>
+              최소 2명 이상 입력해주세요
+            </p>
+          )}
+          <button
+            onClick={handleStart}
+            disabled={!canStart}
+            className="w-full rounded-2xl font-black text-lg transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed relative overflow-hidden"
+            style={{
+              height: 64,
+              background: canStart
+                ? "linear-gradient(135deg, #ffd700 0%, #ffaa00 50%, #ff8c00 100%)"
+                : "rgba(255,255,255,0.05)",
+              color: canStart ? "#1a1000" : "rgba(255,255,255,0.2)",
+              boxShadow: canStart ? "0 8px 32px rgba(255,180,0,0.3)" : "none",
+              border: canStart ? "none" : "1px solid rgba(255,255,255,0.06)",
+            }}
+          >
+            {canStart && (
+              <div className="absolute inset-0 opacity-30"
+                style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.4) 0%, transparent 60%)" }} />
+            )}
+            <span className="relative">
+              {canStart ? `🎯 추첨 시작 (${validNames.length}명)` : "이름을 입력해주세요"}
+            </span>
+          </button>
+        </div>
+      )}
+
       {/* Name List */}
       <div className="relative z-10 flex-1 flex flex-col px-4 gap-3 overflow-hidden">
         <div className="flex items-center justify-between mb-1">
@@ -268,38 +301,6 @@ export function SetupScreen({ onStart }: Props) {
           </div>
         )}
 
-        {/* Start button */}
-        {!bulkMode && (
-          <div className="flex-shrink-0 pb-6 pt-2">
-            {validNames.length < 2 && (
-              <p className="text-center text-xs mb-3" style={{ color: "rgba(255,255,255,0.3)" }}>
-                최소 2명 이상 입력해주세요
-              </p>
-            )}
-            <button
-              onClick={handleStart}
-              disabled={!canStart}
-              className="w-full rounded-2xl font-black text-lg transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed relative overflow-hidden"
-              style={{
-                height: 64,
-                background: canStart
-                  ? "linear-gradient(135deg, #ffd700 0%, #ffaa00 50%, #ff8c00 100%)"
-                  : "rgba(255,255,255,0.05)",
-                color: canStart ? "#1a1000" : "rgba(255,255,255,0.2)",
-                boxShadow: canStart ? "0 8px 32px rgba(255,180,0,0.3)" : "none",
-                border: canStart ? "none" : "1px solid rgba(255,255,255,0.06)",
-              }}
-            >
-              {canStart && (
-                <div className="absolute inset-0 opacity-30"
-                  style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.4) 0%, transparent 60%)" }} />
-              )}
-              <span className="relative">
-                {canStart ? `🎯 추첨 시작 (${validNames.length}명)` : "이름을 입력해주세요"}
-              </span>
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
