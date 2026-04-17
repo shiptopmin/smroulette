@@ -14,9 +14,9 @@ const MAX = 10;
 const R = 11;
 const VW = 343;
 const VH = 600;
-const WH = 4500;
-// Zone 0: 갈튼 | Zone 1: 지그재그 | Zone 2: 스피너 | Zone 3: 이동 플랫폼 | Zone 4: 범퍼 | Zone 5: 최후의 질주
-const ZONE = [0, 800, 1350, 2050, 2900, 3700, WH];
+const WH = 5200;
+// Zone 0: 갈튼 | Zone 1: 지그재그 | Zone 2: 스피너 | Zone 3: 이동 플랫폼 | Zone 4: 범퍼 | Zone 5: 진자 | Zone 6: 최후의 질주
+const ZONE = [0, 800, 1350, 2050, 2900, 3750, 4550, WH];
 
 function shuffle<T>(a: T[]): T[] {
   const b = [...a];
@@ -37,7 +37,8 @@ export function useMarblePhysics(
     engine: null as any, render: null as any, runner: null as any,
     marbles: [] as MarbleBody[],
     spinners: [] as any[],
-    movingPlatforms: [] as any[], // 이동 플랫폼
+    movingPlatforms: [] as any[],
+    pendulums: [] as any[], // 진자
     timer: null as any, stuckTimer: null as any,
     lastPos: new Map<number, { x: number; y: number }>(),
     finishOrder: [] as string[],
@@ -57,7 +58,7 @@ export function useMarblePhysics(
       if (s.runner) (M.Runner as any).stop(s.runner);
       if (s.engine) (M.Engine as any).clear(s.engine);
       s.engine = s.render = s.runner = null;
-      s.marbles = []; s.spinners = []; s.movingPlatforms = [];
+      s.marbles = []; s.spinners = []; s.movingPlatforms = []; s.pendulums = [];
       s.done = false; s.stage = -1; s.camY = 0; s.tick = 0; s.finishOrder = [];
     });
   }, []);
@@ -215,25 +216,61 @@ export function useMarblePhysics(
     }
 
     // ══════════════════════════════════════════════
-    // [Zone 5] 최후의 질주 (y 3750–4500)
+    // [Zone 5] 진자 구간 (y 3800–4500)
+    // 천장 고정점에서 매달린 진자 6개가 각자 다른 타이밍으로 좌우 휘두름
+    // 진자에 맞으면 반대방향으로 튕겨나감
+    // ══════════════════════════════════════════════
+    const armLen = 110;
+    const pendulumDefs = [
+      { pivotX: VW * 0.15, pivotY: 3820, speed: 0.032, phase: 0,              maxAngle: 0.80 },
+      { pivotX: VW * 0.42, pivotY: 3840, speed: 0.025, phase: Math.PI * 0.6,  maxAngle: 0.90 },
+      { pivotX: VW * 0.72, pivotY: 3820, speed: 0.038, phase: Math.PI,        maxAngle: 0.75 },
+      { pivotX: VW * 0.28, pivotY: 4060, speed: 0.028, phase: Math.PI * 1.3,  maxAngle: 0.85 },
+      { pivotX: VW * 0.58, pivotY: 4040, speed: 0.035, phase: Math.PI * 0.4,  maxAngle: 0.80 },
+      { pivotX: VW * 0.85, pivotY: 4060, speed: 0.022, phase: Math.PI * 1.7,  maxAngle: 0.70 },
+      { pivotX: VW * 0.20, pivotY: 4290, speed: 0.030, phase: Math.PI * 0.9,  maxAngle: 0.85 },
+      { pivotX: VW * 0.55, pivotY: 4280, speed: 0.042, phase: Math.PI * 0.2,  maxAngle: 0.75 },
+      { pivotX: VW * 0.80, pivotY: 4300, speed: 0.026, phase: Math.PI * 1.5,  maxAngle: 0.90 },
+    ];
+    pendulumDefs.forEach(def => {
+      // 진자 arm: 고정점 아래로 매달린 막대
+      const initAngle = Math.sin(def.phase) * def.maxAngle;
+      const cx = def.pivotX + Math.sin(initAngle) * armLen * 0.5;
+      const cy = def.pivotY + Math.cos(initAngle) * armLen * 0.5;
+      const arm = M.Bodies.rectangle(cx, cy, 10, armLen, {
+        isStatic: true, friction: 0, restitution: 0.9,
+        render: { fillStyle: "#39FF14", strokeStyle: "#39FF14aa", lineWidth: 2 }
+      });
+      M.Body.setAngle(arm, initAngle);
+      // 고정점 표시 (작은 원)
+      const pivot = M.Bodies.circle(def.pivotX, def.pivotY, 5, {
+        isStatic: true, isSensor: false,
+        render: { fillStyle: "#39FF1488", strokeStyle: "#39FF14", lineWidth: 1 }
+      });
+      s.pendulums.push({ body: arm, ...def, armLen });
+      bodies.push(arm, pivot);
+    });
+
+    // ══════════════════════════════════════════════
+    // [Zone 6] 최후의 질주 (y 4600–5200)
     // ══════════════════════════════════════════════
     const funnelColor = "#FFDE7D55";
     bodies.push(
-      plank(VW * 0.14, 3830, 170, 0.40, funnelColor, 0.25),
-      plank(VW * 0.86, 3830, 170, -0.40, funnelColor, 0.25),
+      plank(VW * 0.14, 4680, 170, 0.40, funnelColor, 0.25),
+      plank(VW * 0.86, 4680, 170, -0.40, funnelColor, 0.25),
     );
     bodies.push(
-      plank(VW * 0.65, 3990, 180, -0.30, funnelColor, 0.2),
-      plank(VW * 0.35, 4110, 180,  0.30, funnelColor, 0.2),
-      plank(VW * 0.65, 4230, 180, -0.30, funnelColor, 0.2),
+      plank(VW * 0.65, 4830, 180, -0.30, funnelColor, 0.2),
+      plank(VW * 0.35, 4950, 180,  0.30, funnelColor, 0.2),
+      plank(VW * 0.65, 5060, 180, -0.30, funnelColor, 0.2),
     );
     for (let i = 0; i < 4; i++) {
-      bodies.push(M.Bodies.circle(42 + i * 88, 4370, 14, {
+      bodies.push(M.Bodies.circle(42 + i * 88, 5110, 14, {
         isStatic: true, restitution: 0.9,
         render: { fillStyle: "#FFDE7D", strokeStyle: "#ffff00", lineWidth: 2 }
       }));
     }
-    // 결승선 센서
+    // 결승선 센서 (WH - 60)
     const sensor = M.Bodies.rectangle(VW / 2, WH - 60, VW, 20, {
       isStatic: true, isSensor: true, label: "finish",
       render: { fillStyle: "#FFDE7D55", strokeStyle: "#FFDE7D", lineWidth: 3 }
@@ -271,6 +308,14 @@ export function useMarblePhysics(
       s.movingPlatforms.forEach(p => {
         const newX = p.baseX + Math.sin(s.tick * p.speed + p.phase) * p.amplitude;
         M.Body.setPosition(p.body, { x: newX, y: p.body.position.y });
+      });
+      // 진자 — 고정점 기준 사인파 회전
+      s.pendulums.forEach(p => {
+        const angle = Math.sin(s.tick * p.speed + p.phase) * p.maxAngle;
+        const cx = p.pivotX + Math.sin(angle) * p.armLen * 0.5;
+        const cy = p.pivotY + Math.cos(angle) * p.armLen * 0.5;
+        M.Body.setPosition(p.body, { x: cx, y: cy });
+        M.Body.setAngle(p.body, angle);
       });
     });
 
