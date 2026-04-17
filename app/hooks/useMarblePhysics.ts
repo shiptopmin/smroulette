@@ -14,8 +14,8 @@ const MAX = 10;
 const R = 11;
 const VW = 343;
 const VH = 600;
-const WH = 5000;
-const ZONE = [0, 900, 2000, 3200, 4200, WH];
+const WH = 4000;
+const ZONE = [0, 800, 1350, 2250, 3150, WH];
 
 function shuffle<T>(a: T[]): T[] {
   const b = [...a];
@@ -88,7 +88,7 @@ export function useMarblePhysics(
     const simNames = shuffle(names.length > MAX ? names.slice(0, MAX) : names);
     const count = simNames.length;
 
-    const engine = M.Engine.create({ gravity: { x: 0, y: 0.85 } });
+    const engine = M.Engine.create({ gravity: { x: 0, y: 1.2 } });
     s.engine = engine;
 
     const render = M.Render.create({
@@ -120,46 +120,41 @@ export function useMarblePhysics(
       });
 
     // ══════════════════════════════════════════════
-    // [Zone 0] 갈튼 보드 (y 80–870)
+    // [Zone 0] 갈튼 보드 (y 70–750) — 10행
     // ══════════════════════════════════════════════
-    for (let row = 0; row < 14; row++) {
+    for (let row = 0; row < 10; row++) {
       const cols = row % 2 === 0 ? 8 : 7;
       const startX = row % 2 === 0 ? 20 : 40;
       for (let col = 0; col < cols; col++) {
-        bodies.push(pin(startX + col * 40, 80 + row * 56, 7, "#4466ff88"));
+        bodies.push(pin(startX + col * 40, 70 + row * 65, 7, "#4466ff88"));
       }
     }
 
     // ══════════════════════════════════════════════
-    // [Zone 1] 지그재그 경사판 (y 920–1940)
+    // [Zone 1] 지그재그 경사판 (y 830–1300) — 5개
     // ══════════════════════════════════════════════
     const plankW = 240;
     const zigzagRows = [
-      { x: VW * 0.62, y: 960,  angle: -0.38, col: "#9966ff" },
-      { x: VW * 0.38, y: 1070, angle:  0.38, col: "#9966ff" },
-      { x: VW * 0.62, y: 1180, angle: -0.38, col: "#9966ff" },
-      { x: VW * 0.38, y: 1290, angle:  0.38, col: "#9966ff" },
-      { x: VW * 0.62, y: 1400, angle: -0.38, col: "#aa77ff" },
-      { x: VW * 0.38, y: 1510, angle:  0.38, col: "#aa77ff" },
-      { x: VW * 0.62, y: 1620, angle: -0.38, col: "#aa77ff" },
-      { x: VW * 0.38, y: 1730, angle:  0.38, col: "#aa77ff" },
-      { x: VW * 0.62, y: 1840, angle: -0.38, col: "#aa77ff" },
+      { x: VW * 0.62, y: 870,  angle: -0.38, col: "#9966ff" },
+      { x: VW * 0.38, y: 970,  angle:  0.38, col: "#9966ff" },
+      { x: VW * 0.62, y: 1070, angle: -0.38, col: "#aa77ff" },
+      { x: VW * 0.38, y: 1170, angle:  0.38, col: "#aa77ff" },
+      { x: VW * 0.62, y: 1270, angle: -0.38, col: "#aa77ff" },
     ];
     zigzagRows.forEach(p => bodies.push(plank(p.x, p.y, plankW, p.angle, p.col)));
     // 양옆 빈틈 가이드 핀
-    for (let row = 0; row < 5; row++) {
-      bodies.push(pin(10, 1010 + row * 200, 8, "#9966ff88"), pin(VW - 10, 1010 + row * 200, 8, "#9966ff88"));
+    for (let row = 0; row < 3; row++) {
+      bodies.push(pin(10, 900 + row * 170, 8, "#9966ff88"), pin(VW - 10, 900 + row * 170, 8, "#9966ff88"));
     }
 
     // ══════════════════════════════════════════════
-    // [Zone 2] 스피너 + 핀 혼합 (y 2020–3140)
-    // 스피너 3행 + 핀 격자 2행으로 다양화
+    // [Zone 2] 스피너 + 핀 혼합 (y 1380–2200)
+    // 스피너 2행 + 핀 격자 2행
     // ══════════════════════════════════════════════
-    // 스피너 3행 (팔 65px)
     const spinnerRows = [
-      [VW * 0.18, 2100], [VW * 0.50, 2100], [VW * 0.82, 2100],
-      [VW * 0.34, 2380], [VW * 0.66, 2380],
-      [VW * 0.18, 2660], [VW * 0.50, 2660], [VW * 0.82, 2660],
+      [VW * 0.18, 1440], [VW * 0.50, 1440], [VW * 0.82, 1440],
+      [VW * 0.34, 1700], [VW * 0.66, 1700],
+      [VW * 0.18, 1960], [VW * 0.50, 1960], [VW * 0.82, 1960],
     ];
     spinnerRows.forEach(([x, y], idx) => {
       const speed = idx % 2 === 0 ? 0.05 : -0.05;
@@ -168,56 +163,56 @@ export function useMarblePhysics(
       s.spinners.push({ b1: arm1, b2: arm2, speed });
       bodies.push(arm1, arm2);
     });
-    // 중간 변화: 큰 핀 격자 (y 2800–3100)
-    for (let row = 0; row < 3; row++) {
+    // 큰 핀 격자
+    for (let row = 0; row < 2; row++) {
       const cols = row % 2 === 0 ? 6 : 5;
       const sx = row % 2 === 0 ? 25 : 50;
       for (let col = 0; col < cols; col++) {
-        bodies.push(pin(sx + col * 55, 2840 + row * 130, 10, "#08D9D688"));
+        bodies.push(pin(sx + col * 55, 2100 + row * 100, 10, "#08D9D688"));
       }
     }
     // 양옆 가이드 핀
-    for (let row = 0; row < 4; row++) {
-      bodies.push(pin(10, 2200 + row * 220, 8, "#08D9D688"), pin(VW - 10, 2200 + row * 220, 8, "#08D9D688"));
+    for (let row = 0; row < 3; row++) {
+      bodies.push(pin(10, 1540 + row * 220, 8, "#08D9D688"), pin(VW - 10, 1540 + row * 220, 8, "#08D9D688"));
     }
 
     // ══════════════════════════════════════════════
-    // [Zone 3] 탄성 범퍼 격자 (y 3220–4160)
+    // [Zone 3] 탄성 범퍼 격자 (y 2300–3100)
     // ══════════════════════════════════════════════
     const bumperR = 18;
-    for (let row = 0; row < 5; row++) {
+    for (let row = 0; row < 4; row++) {
       for (let col = 0; col < 5; col++) {
-        bodies.push(M.Bodies.circle(38 + col * 68 + (row % 2) * 34, 3280 + row * 170, bumperR, {
+        bodies.push(M.Bodies.circle(38 + col * 68 + (row % 2) * 34, 2360 + row * 170, bumperR, {
           isStatic: true, restitution: 1.2,
           render: { fillStyle: "#FF2E63", strokeStyle: "#ff6688", lineWidth: 3 }
         }));
       }
     }
     for (let col = 0; col < 4; col++) {
-      bodies.push(M.Bodies.circle(55 + col * 80, 4080, bumperR, {
+      bodies.push(M.Bodies.circle(55 + col * 80, 3040, bumperR, {
         isStatic: true, restitution: 1.2,
         render: { fillStyle: "#FF2E63", strokeStyle: "#ff6688", lineWidth: 3 }
       }));
     }
 
     // ══════════════════════════════════════════════
-    // [Zone 4] 최후의 질주 (y 4220–5000)
+    // [Zone 4] 최후의 질주 (y 3200–4000)
     // ══════════════════════════════════════════════
     const funnelColor = "#FFDE7D55";
-    // 1차 깔때기 (교차 없음: 끝 사이 91px 여유)
+    // 깔때기 (교차 없음)
     bodies.push(
-      plank(VW * 0.14, 4320, 170, 0.40, funnelColor, 0.25),
-      plank(VW * 0.86, 4320, 170, -0.40, funnelColor, 0.25),
+      plank(VW * 0.14, 3280, 170, 0.40, funnelColor, 0.25),
+      plank(VW * 0.86, 3280, 170, -0.40, funnelColor, 0.25),
     );
     // 지그재그 경사판 3개
     bodies.push(
-      plank(VW * 0.65, 4480, 180, -0.30, funnelColor, 0.2),
-      plank(VW * 0.35, 4600, 180,  0.30, funnelColor, 0.2),
-      plank(VW * 0.65, 4720, 180, -0.30, funnelColor, 0.2),
+      plank(VW * 0.65, 3440, 180, -0.30, funnelColor, 0.2),
+      plank(VW * 0.35, 3560, 180,  0.30, funnelColor, 0.2),
+      plank(VW * 0.65, 3680, 180, -0.30, funnelColor, 0.2),
     );
     // 결승선 직전 범퍼
     for (let i = 0; i < 4; i++) {
-      bodies.push(M.Bodies.circle(42 + i * 88, 4860, 14, {
+      bodies.push(M.Bodies.circle(42 + i * 88, 3820, 14, {
         isStatic: true, restitution: 0.9,
         render: { fillStyle: "#FFDE7D", strokeStyle: "#ffff00", lineWidth: 2 }
       }));
@@ -238,7 +233,7 @@ export function useMarblePhysics(
       const x = baseX + (Math.random() - 0.5) * 15;
       const y = -R * 2 - i * 20;
       const b = M.Bodies.circle(x, y, R, {
-        restitution: 0.35, friction: 0.02, frictionAir: 0.012,
+        restitution: 0.35, friction: 0.02, frictionAir: 0.007,
         density: 0.002, // 모든 구슬 동일
         render: { fillStyle: COLORS[i % COLORS.length], strokeStyle: "#ffffff88", lineWidth: 2 },
         label: "marble"
@@ -306,7 +301,7 @@ export function useMarblePhysics(
     // 전체 폴백 타이머
     s.timer = setTimeout(() => {
       if (!s.done) revealResults();
-    }, 55000);
+    }, 40000);
 
     // 막힘 방지
     s.stuckTimer = setInterval(() => {
